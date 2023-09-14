@@ -2,12 +2,46 @@
     display: flex;
     justify-content: center;
     margin: 10px 0 10px;
+    flex-direction: row;
+    flex-wrap: inherit;
+    align-content: flex-start;
+    align-items: flex-start;
 }
 
 #terminal #terminal_view {
     padding: 10px 20px;
     border-radius: 6px;
-    background-color: #282a36;
+    background-color: #d0d5f3;
+}
+
+#terminal #control_pannel {
+    display: flex;
+    padding: 10px 10px;
+    border-radius: 6px;
+    background-color: #d0d5f3;
+    min-width: 80px;
+    max-width: 480px;
+    min-height: 200px;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: flex-start;
+    align-content: space-between;
+    justify-content: space-around;
+    width: -webkit-fill-available;
+}
+
+#control_pannel .ctl_row {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-evenly;
+    margin: 10px 0 0;
+    width: -webkit-fill-available;
+}
+
+hr {
+    margin: 10px;
 }
 
 .xterm-viewport.xterm-viewport {

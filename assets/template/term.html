@@ -4,7 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="/assets/img/logo.svg">
-  
+
+  <script src="/assets/external/jquery-3.7.1.min.js"></script>
+
   <script src="/assets/external/xterm.js"></script>
   <script src="/assets/external/xterm-addon-attach.js"></script>
   <script src="/assets/external/xterm-addon-fit.js"></script>
@@ -38,13 +40,281 @@
   <div style="margin-top: 2em;">
     <div id="terminal">
       <div id="terminal_view"></div>
+      <div id="control_pannel">
+        <form id="fm_config">
+          <div class="form-control">
+            <div class="list-group">
+              <label for="lst_test_mode" class="form-label">测试模式</label>
+              <select class="form-select" id="lst_test_mode" required>
+                <option value="0">步进-梯度衰减模式</option>
+                <option value="30">连续-固定衰减器, 连续测试</option>
+              </select>
+              <div class="invalid-feedback">
+                请选择一种测试模式
+              </div>
+            </div>
+            <fieldset class="form-group" id="fms_attens">
+              <div class="input-group-text">
+                <label for="atten_start" class="form-label">起始</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">0-63(db)</span>
+                  <input type="text" class="form-control" id="atten_start" placeholder="0" value="0" required>
+                  <div class="invalid-feedback">
+                    衰减器步进起始值
+                  </div>
+                  <select class="form-select" id="lst_atten_start">
+                    <option value="0">0db</option>
+                    <option value="15">15db</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-group-text">
+                <label for="atten_step" class="form-label">步长</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">1-30(db)</span>
+                  <input type="text" class="form-control" id="atten_step" placeholder="5" value="5" required>
+                  <div class="invalid-feedback">
+                    衰减器单步, 步长值
+                  </div>
+                  <select class="form-select" id="lst_atten_step">
+                    <option value="1">1db</option>
+                    <option value="2">2db</option>
+                    <option value="3">3db</option>
+                    <option value="5">5db</option>
+                    <option value="10">10db</option>
+                    <option value="15">15db</option>
+                    <option value="20">20db</option>
+                    <option value="25">25db</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-group-text">
+                <label for="atten_stop" class="form-label">停止</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">1-63(db)</span>
+                  <input type="text" class="form-control" id="atten_stop" placeholder="63" value="63" required>
+                  <div class="invalid-feedback">
+                    衰减器步进停止值
+                  </div>
+                  <select class="form-select" id="lst_atten_stop">
+                    <option value="40">40db</option>
+                    <option value="45">45db</option>
+                    <option value="50">50db</option>
+                    <option value="55">55db</option>
+                    <option value="63">63db</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-group-text">
+                <label for="atten_intvl" class="form-label">单步停留时长</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">1-300(s)</span>
+                  <input type="text" class="form-control" id="atten_intval" placeholder="0" value="10" required>
+                  <div class="invalid-feedback">
+                    单步停留时间
+                  </div>
+                  <select class="form-select" id="lst_atten_intval">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="form-group" id="fms_conts">
+              <div class="input-group-text">
+                <label for="atten_value" class="form-label">衰减器预置值</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">0-63(db)</span>
+                  <input type="text" class="form-control" id="atten_value" placeholder="0" value="15" required>
+                  <div class="invalid-feedback">
+                    衰减器默认状态值
+                  </div>
+                  <select class="form-select" id="lst_atten_value">
+                    <option value="0">0</option>
+                    <option value="15">15</option>
+                    <option value="25">25</option>
+                    <option value="45">45</option>
+                    <option value="63">63</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-group-text">
+                <label for="cont_seconds" class="form-label">持续测试时长</label>
+                <div class="input-group has-validation">
+                  <span class="input-group-text">10-86400(s)~24小时</span>
+                  <input type="text" class="form-control" id="cont_seconds" placeholder="0" value="30" required>
+                  <div class="invalid-feedback">
+                    连续测试时长
+                  </div>
+                  <select class="form-select" id="lst_cont_seconds">
+                    <option value="10">10 sec</option>
+                    <option value="20">20 sec</option>
+                    <option value="30">30 sed</option>
+                    <option value="300">5 min</option>
+                    <option value="600">10 min</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+          </div>
+          <div class="form-control">
+            <div class="input-group">
+              <label for="test_prefix" class="form-label">报告前缀</label>
+              <div class="input-group has-validation">
+                <span class="input-group-text">~.xlsx</span>
+                <input type="text" class="form-control" id="test_prefix" placeholder="设备-频段-DL/UL/BD-..."
+                  value="WR3000K-5G-UL-ANT" required>
+                <div class="invalid-feedback">
+                  测试报告前缀
+                </div>
+                <br>
+                <select class="form-select" id="lst_test_prefix">
+                  <option value="WR3k-2G-DL">WR3k-2G-DL</option>
+                  <option value="WR3k-2G-UL">WR3k-2G-UL</option>
+                  <option value="WR3k-5G-DL">WR3k-5G-DL</option>
+                  <option value="WR3k-5G-UL">WR3k-5G-UL</option>
+                  <option value="MS3k-NG-BD">MS3k-NG-BD</option>
+                  <option value="XD3k-NG-BD">XD3k-NG-BD</option>
+                  <option value="XD3G-NG-BD">XD3G-NG-BD</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <button type="button" id="btn_cfg_submit" class="w-100 btn btn-outline-dark btn-lg"
+            value="btn_cfg_submit">更新配置</button>
+        </form>
+        <div class="ctl_row">
+          <button type="button" id="btn_preset" class="btn btn-sm btn-outline-info" value="preset">系统复位</button>
+          <button type="button" id="btn_dashboard" class="btn btn-sm btn-outline-info"
+            value="statistic">Dashboard</button>
+        </div>
+        <div class="ctl_row">
+          <button type="button" id="btn_test_on" class="btn btn-success btn-lg float-end" value="on">启动 ></button>
+          <button type="button" id="btn_test_pause" class="btn btn-warning btn-lg float-end" value="pause">暂停
+            ||</button>
+          <button type="button" id="btn_test_off" class="btn btn-danger btn-lg float-end" value="off">停止 X</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
+    function Init() {
+      var term = createTerminal("{{.path}}");
+      // print something to test output and scroll
+      // var str = [
+      //   ' ┌────────────────────────────────────────────────────────────────────────────┐\n',
+      //   ' │                 \u001b[32;1mhttps://github.com/syssecfsu/witty\x1b[0m <- click it!            │\n',
+      //   ' └────────────────────────────────────────────────────────────────────────────┘\n',
+      //   ''
+      // ].join('');
+
+      // var str = $.fn.tooltip.Constructor.VERSION
+      term.paste('cd ..\n')
+
+      var cmd_queue = []
+
+      term.onLineFeed(function () {
+        //new line 
+        while (action = cmd_queue.pop()) {
+          console.log("line feed callback")
+          action()
+        }
+      })
+
+      $('#lst_test_mode').on('change', function (mode) {
+        update_view()
+      })
+
+      $('#btn_cfg_submit').on('change', function (btn) {
+        var data = collect_config()
+        update_view()
+        {
+          let post = new FormData()
+          post.append('gorilla.csrf.Token', "{{.csrfToken}}")
+
+          fetch("/config", {
+            method: 'POST',
+            body: post
+          })
+        }
+      })
+
+      $('#btn_preset').on('click', function (preset) {
+        $(preset).prop('disabled', true)
+        console.log("presets button disabled")
+
+        cmd_queue.push(function () {
+          $.when(
+            term.paste('cd /home/trex/workspace/trex-core/scripts && ' +
+              './trex-console -s 10.10.16.241 -r --python3\r\n'),
+            term.paste('plugins load sat_runner\r\n'),
+            term.paste('tui\r\n')).then(function () {
+              term.focus()
+              $(preset).prop('disabled', false)
+              console.log("preset button enabled")
+            })
+        })
+
+        console.log("send ctl+c")
+        term.paste("\x03")
+      })
+
+      $('#btn_test_off').on('click', function (btn) {
+        $(btn).prop('disabled', true)
+        $.when(term.paste('\x03')).then(function (r) {
+          $(btn).prop('disabled', false)
+        })
+      })
+
+      window.xterm = term;
+    }
+    Init()
+    update_view()
+
+    function collect_config() {
+      var data = {}
+      $.each($(':input, :selected'), function (idx, field) {
+        data[field.id] = field.value
+      })
+      return data
+    }
+
+    function apply_config(data) {
+      $.each($(':input, :selected'), function (idx, field) {
+        if (data[field.id]) {
+          field.value = data[field.id]
+        }
+      })
+    }
+
+    function update_view() {
+      var mode = $('#lst_test_mode')[0].value
+
+      if (mode > 0) {
+        $('form #fms_attens').hide()
+        $('form #fms_conts').show()
+      } else {
+        $('form #fms_attens').show()
+        $('form #fms_conts').hide()
+      }
+
+      var term_height = $($('#terminal #terminal_view')[0]).height()
+      $.each($('#control_pannel'), function (idx, pan) {
+        $(pan).height(term_height)
+      })
+    }
+
+    function on_mode_change() {
+      update_view()
+    }
+
     function recordOnOff(on) {
       let formData = new FormData()
-      formData.append('gorilla.csrf.Token', {{.csrfToken}})
+      formData.append('gorilla.csrf.Token', "{{.csrfToken}}")
 
       var btn = document.getElementById("record_onoff");
       if (btn.value == "Record") {
@@ -63,21 +333,6 @@
         })
       }
     }
-
-    function Init() {
-      term = createTerminal("{{.path}}");
-      // print something to test output and scroll
-      var str = [
-        ' ┌────────────────────────────────────────────────────────────────────────────┐\n',
-        ' │                 \u001b[32;1mhttps://github.com/syssecfsu/witty\x1b[0m <- click it!            │\n',
-        ' └────────────────────────────────────────────────────────────────────────────┘\n',
-        ''
-      ].join('');
-
-      term.writeln(str)
-    }
-
-    Init()
   </script>
 
 </body>
