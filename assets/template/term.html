@@ -22,7 +22,7 @@
 </head>
 
 <body>
-  <header>
+  <header hidden>
     <nav class="navbar navbar-light bg-light shadow-sm navbar-xs">
       <div class="container-fluid">
         <a class="navbar-brand mx-auto" href="https://github.com/syssecfsu/witty" target="_blank">
@@ -36,11 +36,10 @@
     </nav>
   </header>
 
-
   <div style="margin-top: 2em;">
     <div id="terminal">
       <div id="terminal_view"></div>
-      <div id="control_pannel">
+      <div id="control_pannel" hidden>
         <form id="fm_config">
           <div class="form-control">
             <div class="list-group">
@@ -144,7 +143,7 @@
               <div class="input-group-text">
                 <label for="cont_seconds" class="form-label">持续测试时长</label>
                 <div class="input-group has-validation">
-                  <span class="input-group-text">10-86400(s)~24小时</span>
+                  <span class="input-group-text">10s~24小时</span>
                   <input type="text" class="form-control" id="cont_seconds" placeholder="0" value="30" required>
                   <div class="invalid-feedback">
                     连续测试时长
@@ -155,6 +154,8 @@
                     <option value="30">30 sed</option>
                     <option value="300">5 min</option>
                     <option value="600">10 min</option>
+                    <option value="3600">1 hour</option>
+                    <option value="86400">24 hour</option>
                   </select>
                 </div>
               </div>
@@ -170,21 +171,20 @@
                 <div class="invalid-feedback">
                   测试报告前缀
                 </div>
-                <br>
-                <select class="form-select" id="lst_test_prefix">
-                  <option value="WR3k-2G-DL">WR3k-2G-DL</option>
-                  <option value="WR3k-2G-UL">WR3k-2G-UL</option>
-                  <option value="WR3k-5G-DL">WR3k-5G-DL</option>
-                  <option value="WR3k-5G-UL">WR3k-5G-UL</option>
-                  <option value="MS3k-NG-BD">MS3k-NG-BD</option>
-                  <option value="XD3k-NG-BD">XD3k-NG-BD</option>
-                  <option value="XD3G-NG-BD">XD3G-NG-BD</option>
-                </select>
               </div>
             </div>
+            <select class="form-select" id="lst_test_prefix">
+              <option value="WR3k-2G-DL">WR3k-2G-DL</option>
+              <option value="WR3k-2G-UL">WR3k-2G-UL</option>
+              <option value="WR3k-5G-DL">WR3k-5G-DL</option>
+              <option value="WR3k-5G-UL">WR3k-5G-UL</option>
+              <option value="MS3k-NG-BD">MS3k-NG-BD</option>
+              <option value="XD3k-NG-BD">XD3k-NG-BD</option>
+              <option value="XD3G-NG-BD">XD3G-NG-BD</option>
+            </select>
           </div>
           <button type="button" id="btn_cfg_submit" class="w-100 btn btn-outline-dark btn-lg"
-            value="btn_cfg_submit">更新配置</button>
+            value="btn_cfg_submit">配置保存</button>
         </form>
         <div class="ctl_row">
           <button type="button" id="btn_preset" class="btn btn-sm btn-outline-info" value="preset">系统复位</button>
@@ -201,9 +201,17 @@
     </div>
   </div>
 
+  <form id="fm_pop_window" method="post" action="">
+    <input type="hidden" name="gorilla.csrf.Token" value="{{.csrfToken}}">
+    <input type="hidden" name="pop" value="dashboard">
+  </form>
+
   <script>
-    function Init() {
-      var term = createTerminal("{{.path}}");
+    var cmd_queue = []
+
+    $(function () {
+      var win_name = window.name
+      term = createTerminal("{{.path}}");
       // print something to test output and scroll
       // var str = [
       //   ' ┌────────────────────────────────────────────────────────────────────────────┐\n',
@@ -211,20 +219,106 @@
       //   ' └────────────────────────────────────────────────────────────────────────────┘\n',
       //   ''
       // ].join('');
+      term.paste('cd ..\r\n')
 
-      // var str = $.fn.tooltip.Constructor.VERSION
-      term.paste('cd ..\n')
+      function term_feed_lines(cbks) {
+        var row = term.buffer.normal.viewportY + term.buffer.normal.cursorY
+        term.selectLines(row - 10, row)
+        reply_line = term.getSelection()
+        // term.clearSelection()
 
-      var cmd_queue = []
+        cbks.forEach(function (cb_func, rex) {
+          console.log("line feed match: " + rex)
+          if (reply_line.match(rex)) {
+            if (cb_func(reply_line))
+              cbks.delete(rex)
+          }
+        });
+      }
 
       term.onLineFeed(function () {
-        //new line 
-        while (action = cmd_queue.pop()) {
+        //new line callback, feedback_processor
+        var line_processor = []
+        while (line_processor = cmd_queue.pop()) {
           console.log("line feed callback")
-          action()
+          line_processor[0]()
+          if (line_processor.length > 1) {
+            var map_cbks = line_processor[1]
+            var intv = setInterval(function () {
+              if (term_feed_lines(map_cbks)) {
+                console.log("line feed call back sucessed")
+                clearInterval(intv)
+              } else {
+                console.log("line feed call retry, entries: " + map_cbks.size)
+                if (map_cbks.size < 1) {
+                  clearInterval(intv)
+                }
+              }
+            }, 1000)
+            setTimeout(function () {
+              clearInterval(intv)
+            }, 5000)
+          }
         }
+        // console.log(reply_line)
       })
 
+      var open_dashbaord = function () {
+        var map_cbks = new Map([
+          [/passphrase/i, function (line) {
+            term.paste('ffbt\r\n')
+            console.log("sshkey passwd entered")
+            return true
+          }],
+          [/TREX_WLAN_STA/i, function (line) {
+            term.paste('bmon -p ath*6 -o curses:ngraph=2 -b\r\n')
+            console.log("bmon started")
+            return true
+          }]
+        ])
+        cmd_queue.push([function () {
+          $.when(term.paste('cd /home/trex/workspace/trex-core/scripts && ' +
+            'ssh -i keys/fb.id_rsa root@192.168.10.230\r\n')
+          ).then(function () {
+            console.log("ssh connecting ...")
+          })
+        }, map_cbks])
+      }
+
+      // pop up window
+      if (win_name != '') {
+        console.log("pop up window: " + win_name)
+        switch (win_name) {
+          case 'dashboard':
+            $("#terminal").parent().css('margin: 0')
+            $('#btn_dashboard', window.opener.document).prop('disabled', true)
+            $(window).on('unload', function () {
+              $('#btn_dashboard', window.opener.document).prop('disabled', false)
+            })
+            open_dashbaord()
+            break;
+        }
+        return
+      }
+
+      init_view()
+      bind_btns()
+      bind_lst_helper()
+      update_view()
+      return
+    })
+
+    function ctl_c() {
+      console.log("send ctl+c")
+      term.paste("\x03")
+    }
+
+    function init_view() {
+      $('header').prop('hidden', false)
+      $('#control_pannel').prop('hidden', false)
+    }
+
+    function bind_btns() {
       $('#lst_test_mode').on('change', function (mode) {
         update_view()
       })
@@ -244,42 +338,66 @@
       })
 
       $('#btn_preset').on('click', function (preset) {
-        $(preset).prop('disabled', true)
+        $('#btn_preset').prop('disabled', true)
         console.log("presets button disabled")
 
-        cmd_queue.push(function () {
+        cmd_queue.push([function () {
           $.when(
             term.paste('cd /home/trex/workspace/trex-core/scripts && ' +
               './trex-console -s 10.10.16.241 -r --python3\r\n'),
             term.paste('plugins load sat_runner\r\n'),
             term.paste('tui\r\n')).then(function () {
               term.focus()
-              $(preset).prop('disabled', false)
+              $('#btn_preset').prop('disabled', false)
               console.log("preset button enabled")
             })
-        })
-
-        console.log("send ctl+c")
-        term.paste("\x03")
+        }])
+        ctl_c()
       })
 
       $('#btn_test_off').on('click', function (btn) {
-        $(btn).prop('disabled', true)
-        $.when(term.paste('\x03')).then(function (r) {
-          $(btn).prop('disabled', false)
-        })
+        $('#btn_test_off').prop('disabled', true)
+        cmd_queue.push([function () {
+          $.when(term.paste('\x03')).then(function (r) {
+            $('#btn_test_off').prop('disabled', false)
+          })
+        }])
+        ctl_c()
       })
 
-      window.xterm = term;
+      $('#btn_dashboard').on('click', function (e) {
+        $('#fm_pop_window').submit()
+      })
+
+      $("#fm_pop_window").on('submit', function (fm) {
+        dashboard = window.open('', 'dashboard', 'width=1100, height=790, resizeable=0, scrollbars=0, status=0, toolbar=0, menubar=0, location=0', '_top')
+        this.target = 'dashboard'
+      })
+
     }
-    Init()
-    update_view()
+
+    function bind_lst_helper() {
+      $.each($('select'), function (idx, field) {
+        var id
+        if (id = field.id.match(/lst_(.*)/)[1]) {
+          $(field).on('change', function (e) {
+            console.log('bind hook of: ' + id + ' by ' + field.id)
+            var txt = $('#' + id)
+            if (txt) {
+              txt.val($(e.target).val())
+            }
+          })
+        }
+      })
+    }
 
     function collect_config() {
       var data = {}
       $.each($(':input, :selected'), function (idx, field) {
         data[field.id] = field.value
       })
+
+      console.log(data)
       return data
     }
 
